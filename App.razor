@@ -1,0 +1,76 @@
+﻿@inject IJSRuntime jsRuntime
+@implements IAsyncDisposable
+
+<div style="margin: 24px auto; max-width: 800px; display:flex; flex-direction:column; gap:24px;">
+
+    <div>
+        <IgbInput Placeholder="ここにテキストを入力して Enter すると入力した文字列を名前に含む行に絞り込みします。" Change="OnChangeFilterInput" />
+    </div>
+
+    <IgbGrid Id="grid-1"
+             Data="Person.SampleData"
+             PrimaryKey="@nameof(Person.Id)"
+             AutoGenerate="false"
+             DisplayDensity="DisplayDensity.Cosy"
+             AllowFiltering="true"
+             FilterMode="FilterMode.ExcelStyleFilter"
+             Height="300px">
+        <IgbColumn Header="ID" Field="@nameof(Person.Id)" Name="@nameof(Person.Id)" />
+        <IgbColumn Header="名前" Field="@nameof(Person.Name)" Name="@nameof(Person.Name)" />
+        <IgbColumn Header="年齢" Field="@nameof(Person.Age)" Name="@nameof(Person.Age)" />
+    </IgbGrid>
+</div>
+
+@code
+{
+    /// <summary>
+    /// JavaScript による支援関数を収めたモジュールの参照です。
+    /// </summary>
+    private IJSObjectReference? _JsModule;
+
+    /// <summary>
+    /// JavaScript による支援関数を収めたモジュールを読み込んで返します。
+    /// </summary>
+    private async ValueTask<IJSObjectReference> GetHelperModuleAsync()
+    {
+        if (_JsModule == null)
+        {
+            _JsModule = await this.jsRuntime.InvokeAsync<IJSObjectReference>("import", "./igb-grid-filter.js");
+        }
+        return _JsModule;
+    }
+
+    /// <summary>
+    /// テキスト入力欄 (IgbInput) で、入力後に Enter が押されたり、フォーカスが移動したりしたときに呼び出され、
+    /// 入力された文字列を氏名に含む行のみに絞り込みします。
+    /// </summary>
+    /// <param name="args"></param>
+    /// <returns></returns>
+    private async Task OnChangeFilterInput(IgbComponentValueChangedEventArgs args)
+    {
+        // JavaScript による支援関数を収めたモジュールを取得します。
+        var jsModule = await GetHelperModuleAsync();
+
+        // そのモジュールで公開されている filter 関数を呼び出して、グリッドへのフィルターを適用します。
+        await jsModule.InvokeVoidAsync("filter",
+            "#grid-1",              // フィルタを適用する対象のグリッド要素を指定する CSS セレクター
+            nameof(Person.Name),    // フィルタを適用する列の列名 (IgbColumn の Name パラメーターに指定した値)
+            args.Detail,            // フィルタの条件となる文字列
+            "string",               // フィルタ式の演算子セット名 (Operand Name)
+            "contains",             // 指定された演算子セットに収録されている内の、フィルタの条件となる演算子名 (Operator Name)
+            true                    // 大文字小文字を区別するかどうか (true で区別しない)
+        );
+    }
+
+    /// <summary>
+    /// この Razor コンポーネントが破棄されるときに呼び出されます。
+    /// </summary>
+    public async ValueTask DisposeAsync()
+    {
+        // JavaScript による支援関数を収めたモジュールを破棄します。
+        if (_JsModule is not null)
+        {
+            try { await _JsModule.DisposeAsync(); } catch (JSDisconnectedException) { }
+        }
+    }
+}
