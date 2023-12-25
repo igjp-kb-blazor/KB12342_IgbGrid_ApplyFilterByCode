@@ -3,8 +3,9 @@
 
 <div style="margin: 24px auto; max-width: 800px; display:flex; flex-direction:column; gap:24px;">
 
-    <div>
-        <IgbInput Placeholder="ここにテキストを入力して Enter すると入力した文字列を名前に含む行に絞り込みします。" Change="OnChangeFilterInput" />
+    <div style="display:flex; gap:12px;">
+        <IgbInput @bind-Value="_filterText" Placeholder="ここにテキストを入力し [検索] ボタンをクリック又は Enter すると入力した内容を名前に含む行に絞り込みます。" Change="ApplyFilterByCodeAsync" style="flex:1;" />
+        <IgbButton @onclick="ApplyFilterByCodeAsync">検索</IgbButton>
     </div>
 
     <IgbGrid Id="grid-1"
@@ -29,6 +30,11 @@
     private IJSObjectReference? _JsModule;
 
     /// <summary>
+    /// 絞り込み用のテキスト入力欄 (IgbInput) に入力された文字列を保持します。
+    /// </summary>
+    private string? _filterText;
+
+    /// <summary>
     /// JavaScript による支援関数を収めたモジュールを読み込んで返します。
     /// </summary>
     private async ValueTask<IJSObjectReference> GetHelperModuleAsync()
@@ -41,12 +47,10 @@
     }
 
     /// <summary>
-    /// テキスト入力欄 (IgbInput) で、入力後に Enter が押されたり、フォーカスが移動したりしたときに呼び出され、
-    /// 入力された文字列を氏名に含む行のみに絞り込みします。
+    /// [検索] ボタンがクリックされるか、テキスト入力欄 (IgbInput) で入力後に Enter が押されたり、
+    /// フォーカスが移動したりしたときに呼び出され、入力された文字列を氏名に含む行のみに絞り込みします。
     /// </summary>
-    /// <param name="args"></param>
-    /// <returns></returns>
-    private async Task OnChangeFilterInput(IgbComponentValueChangedEventArgs args)
+    private async Task ApplyFilterByCodeAsync()
     {
         // JavaScript による支援関数を収めたモジュールを取得します。
         var jsModule = await GetHelperModuleAsync();
@@ -55,7 +59,7 @@
         await jsModule.InvokeVoidAsync("filter",
             "#grid-1",              // フィルタを適用する対象のグリッド要素を指定する CSS セレクター
             nameof(Person.Name),    // フィルタを適用する列の列名 (IgbColumn の Name パラメーターに指定した値)
-            args.Detail,            // フィルタの条件となる文字列
+            _filterText,            // フィルタの条件となる文字列
             "string",               // フィルタ式の演算子セット名 (Operand Name)
             "contains",             // 指定された演算子セットに収録されている内の、フィルタの条件となる演算子名 (Operator Name)
             true                    // 大文字小文字を区別するかどうか (true で区別しない)
